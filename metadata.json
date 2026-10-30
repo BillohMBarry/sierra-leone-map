@@ -1,0 +1,6 @@
+{
+  "name": "Sierra Leone Interactive Political Map",
+  "description": "Interactive political and geographic map of Sierra Leone featuring provinces, districts, major cities, population data, and regional insights.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
