@@ -3,7 +3,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Menu } from 'lucide-react';
 import { CITIES, PROVINCES, RegionId } from './data/sierraLeoneData';
 import {
   filterCities,
@@ -58,7 +59,9 @@ export default function App() {
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [showAllCities, setShowAllCities] = useState<boolean>(false);
   const [isDetailOpen, setIsDetailOpen] = useState<boolean>(true);
+  const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(false);
   const [favoriteCityIds, setFavoriteCityIds] = useState<string[]>(['freetown']);
+  const menuButtonRef = useRef<HTMLButtonElement>(null);
 
   // Real-Time Regional Metrics & Data Layer Switcher state
   const [activeLayer, setActiveLayer] = useState<DataLayerId>('political');
@@ -87,6 +90,23 @@ export default function App() {
 
   const siblingCities = useMemo(() => getSiblingCities(selectedCity), [selectedCity]);
 
+  const closeSidebar = useCallback(() => {
+    setIsSidebarOpen(false);
+    if (window.matchMedia('(max-width: 767px)').matches) {
+      window.requestAnimationFrame(() => menuButtonRef.current?.focus());
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!isSidebarOpen) return;
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') closeSidebar();
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [closeSidebar, isSidebarOpen]);
+
   const handlePulseTelemetry = useCallback(() => {
     setTickCounter((prevTick) => {
       const nextTick = prevTick + 1;
@@ -107,6 +127,7 @@ export default function App() {
   const handleSelectCity = (cityId: string) => {
     setSelectedCityId(cityId);
     setIsDetailOpen(true);
+    closeSidebar();
   };
 
   const handleSelectProvince = (provinceId: RegionId) => {
@@ -120,6 +141,7 @@ export default function App() {
         setIsDetailOpen(true);
       }
     }
+    closeSidebar();
   };
 
   const handleExploreRegion = (regionId: RegionId) => {
@@ -170,23 +192,45 @@ export default function App() {
     <main className="relative w-screen h-screen overflow-hidden flex bg-[#f3f3e8]">
       {/* Left Navigation Sidebar */}
       <LeftSidebar
+        isOpen={isSidebarOpen}
         provinces={filteredProvinces}
         cities={filteredCities}
         selectedCityId={selectedCityId}
         selectedProvinceId={selectedProvinceId}
         searchQuery={searchQuery}
         showAllCities={showAllCities}
-        totalCityCount={CITIES.length}
         activeLayer={activeLayer}
         telemetryStore={telemetryStore}
         onSearchChange={setSearchQuery}
         onSelectCity={handleSelectCity}
         onSelectProvince={handleSelectProvince}
         onToggleShowAllCities={() => setShowAllCities((prev) => !prev)}
+        onClose={closeSidebar}
       />
+
+      {isSidebarOpen && (
+        <button
+          type="button"
+          aria-label="Close navigation menu"
+          onClick={closeSidebar}
+          className="fixed inset-0 z-30 bg-slate-950/30 md:hidden"
+        />
+      )}
 
       {/* Center Interactive Political & Telemetry Map Canvas + Floating Right Detail Panel */}
       <div className="relative flex-1 h-full overflow-hidden flex">
+        <button
+          ref={menuButtonRef}
+          type="button"
+          aria-label="Open navigation menu"
+          aria-controls="left-navigation-sidebar"
+          aria-expanded={isSidebarOpen}
+          onClick={() => setIsSidebarOpen(true)}
+          className="absolute left-3 top-3 z-20 flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200/80 bg-white/95 text-slate-800 shadow-md backdrop-blur-xs transition-colors hover:bg-white md:hidden"
+        >
+          <Menu className="h-5 w-5" aria-hidden="true" />
+        </button>
+
         <InteractiveMap
           provinces={PROVINCES}
           cities={CITIES}
