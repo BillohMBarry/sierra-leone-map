@@ -1,9 +1,10 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { Building2, ChevronRight, Compass, Search, X } from 'lucide-react';
 import { CityData, ProvinceData, RegionId } from '../data/sierraLeoneData';
 import { DataLayerId, resolveChoroplethStyle, TelemetryStore } from '../utils/telemetryEngine';
 
 interface LeftSidebarProps {
+  isOpen: boolean;
   provinces: ProvinceData[];
   cities: CityData[];
   selectedCityId: string;
@@ -16,9 +17,11 @@ interface LeftSidebarProps {
   onSelectCity: (cityId: string) => void;
   onSelectProvince: (provinceId: RegionId) => void;
   onToggleShowAllCities: () => void;
+  onClose: () => void;
 }
 
 export const LeftSidebar: React.FC<LeftSidebarProps> = ({
+  isOpen,
   provinces,
   cities,
   selectedCityId,
@@ -31,15 +34,52 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
   onSelectCity,
   onSelectProvince,
   onToggleShowAllCities,
+  onClose,
 }) => {
+  const sidebarRef = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const sidebar = sidebarRef.current;
+    const focusableElements = sidebar?.querySelectorAll<HTMLElement>(
+      'button:not([disabled]), input:not([disabled]), [href], [tabindex]:not([tabindex="-1"])'
+    );
+    if (!focusableElements?.length) return;
+
+    const firstElement = focusableElements[0];
+    const lastElement = focusableElements[focusableElements.length - 1];
+    firstElement.focus();
+
+    const trapFocus = (event: KeyboardEvent) => {
+      if (event.key !== 'Tab') return;
+      if (event.shiftKey && document.activeElement === firstElement) {
+        event.preventDefault();
+        lastElement.focus();
+      } else if (!event.shiftKey && document.activeElement === lastElement) {
+        event.preventDefault();
+        firstElement.focus();
+      }
+    };
+
+    document.addEventListener('keydown', trapFocus);
+    return () => document.removeEventListener('keydown', trapFocus);
+  }, [isOpen]);
+
   return (
     <aside
+      ref={sidebarRef}
+      id="left-navigation-sidebar"
+      role={isOpen ? 'dialog' : undefined}
+      aria-modal={isOpen || undefined}
       aria-label="Sierra Leone Regions and Cities Navigation"
-      className="w-[316px] shrink-0 h-full bg-white border-r border-slate-200/80 flex flex-col justify-between px-4 py-4 z-20 select-none overflow-y-auto custom-scrollbar"
+      className={`fixed inset-y-0 left-0 z-40 flex h-full w-[min(316px,90vw)] shrink-0 flex-col justify-between overflow-y-auto border-r border-slate-200/80 bg-white px-4 py-4 select-none custom-scrollbar transition-transform duration-200 md:relative md:inset-auto md:z-20 md:h-full md:w-[316px] md:translate-x-0 ${
+        isOpen ? 'visible translate-x-0' : 'invisible -translate-x-full md:visible'
+      }`}
     >
       <div>
         {/* Top Brand Header with Flag */}
-        <div className="flex items-center gap-3.5 px-1 pt-0.5 pb-3">
+        <div className="flex items-center justify-between gap-3.5 px-1 pt-0.5 pb-3">
           <div
             className="w-[50px] h-[42px] rounded-lg overflow-hidden shadow-xs border border-slate-200/80 shrink-0 flex flex-col"
             aria-label="Flag of Sierra Leone"
@@ -57,6 +97,14 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
               Interactive Political Map
             </p>
           </div>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close navigation menu"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-800 md:hidden"
+          >
+            <X className="h-5 w-5" aria-hidden="true" />
+          </button>
         </div>
 
         {/* Search Input */}
